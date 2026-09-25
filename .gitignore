@@ -85,3 +85,9 @@ desktop.ini
 *.db
 *.pid
 *.seed
+
+# ===== 提交前自检流水线的工作目录（日志/中间产物，仅失败时临时保留） =====
+.pipeline/
+
+# 流水线脚本本地编译缓存
+scripts/__pycache__/

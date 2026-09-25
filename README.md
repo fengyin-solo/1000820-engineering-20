@@ -17,7 +17,8 @@
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/          每个业务模块一组接口
 │   ├── app/services/         业务规则与状态流转
-│   └── app/store.py          内存数据仓库与示例数据
+│   └── app/store.py          内存数据仓库（seed.py 为生成产物，勿手改）
+├── scripts/                  提交前自检流水线（数据生成、接口自检、前端构建）
 ├── .gitignore
 └── docker-compose.yml
 ```
@@ -44,6 +45,42 @@ npm run dev
 
 前端默认监听 `http://127.0.0.1:5173/`，dev server 不会自动打开浏览器，
 需要自己访问。`/api` 由 vite 代理到后端 `http://127.0.0.1:8000`。
+
+## 提交前自检流水线
+
+一条命令把「箱区样板数据生成 → 后端接口自检 → 前端构建打包」跑完，并给出这次能不能提交的结论：
+
+```bash
+make check
+```
+
+三步各自做什么：
+
+1. **样板数据生成（数据步）**：`backend/app/seed.py` 不再手工维护，由
+   `scripts/seed_spec.py`（声明式规格）结合各 service/router 的字段与状态定义，
+   通过 `scripts/generate_seed.py` 确定性生成并自校验；要改样板内容改规格再重跑。
+2. **后端接口自检（构建步）**：`scripts/check_backend.py` 起一个临时 uvicorn
+   （随机端口、跑完即停），对 18 个模块的列表、明细、404、创建、缺字段拦截、
+   动作状态流转、导出逐一打真实 HTTP 请求。
+3. **前端构建打包（构建步）**：先清掉上一次的 `dist`，再跑 `npm run build`
+   （含 vue-tsc 类型检查）。
+
+失败时结论会写明是**数据问题**还是**构建问题**，日志在 `.pipeline/<步骤>.log`，
+并提示只重跑那一步的命令：
+
+```bash
+make check-seed       # 只重跑样板数据生成
+make check-backend    # 只重跑后端接口自检
+make check-frontend   # 只重跑前端构建
+```
+
+每一步开跑前都会先清掉自己上一次的中间产物（数据临时文件、前端 `dist`），
+整条流水线的工作目录 `.pipeline/` 每次运行整体重建，成功后自动删除；
+失败时保留日志用于定位。环境依赖没装时会提示先跑 `make install`。
+
+上面的手工启动方式（`backend/run.sh`、`npm run dev`、`make backend`、`make frontend`）
+照旧可用，流水线不影响日常起服务。
+
 
 ## 业务模块
 
